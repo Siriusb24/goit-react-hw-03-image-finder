@@ -1,90 +1,106 @@
 import React, { Component } from 'react';
-import PropTypes from 'prop-types';
-import { ToastContainer } from 'react-toastify';
-import './app.css';
 
-import pixabayApi from './components/pixabay-api';
-import ImagesErrorView from './components/ImagesErrorView';
-import ImagePendingView from './components/ImagePendingView';
-import ImageGallery from './components/ImageGallery';
-import Button from './components/Button';
-import Searchbar from './components/Searchbar';
-
-const Status = {
-  IDLE: 'idle',
-  PENDING: 'pending',
-  RESOLVED: 'resolved',
-  REJECTED: 'rejected',
-};
+import SearchBar from './components/SearchBar/SearchBar';
+import ImageGallery from './components/ImageGallery/ImageGallery';
+import Modal from './components/Modal/Modal';
+import Button from './components/Button/Button';
+import Spinner from './components/Spinner/Spinner';
+import fetchImages from './services/apiServices';
+import './App.css';
 
 class App extends Component {
   state = {
-    error: null,
-    status: 'idle',
-    requestKey: '',
+    modalContent: '',
+    searchQuery: '',
     page: 1,
-    images: [],
+    visibleImages: [],
+    isLoading: false,
+    openModal: false,
   };
 
-  static propTypes = {
-    requestKey: PropTypes.string.isRequired,
-    page: PropTypes.number.isRequired,
-    images: PropTypes.array.isRequired,
-  };
+  componentDidUpdate(prevProps, { searchQuery, page }) {
+    if (searchQuery !== this.state.searchQuery) {
+      this.getData();
+    }
 
-  handleFormSubmit = newRequestKey => {
-    this.setState({ requestKey: newRequestKey, page: 1, images: [] });
-  };
-
-  componentDidUpdate(prevProps, prevState) {
-    const prevName = prevState.requestKey;
-    const nextName = this.state.requestKey;
-
-    if (prevName !== nextName) {
-      this.renderImages();
+    if (page !== this.state.page) {
+      this.getData();
     }
   }
 
-  renderImages = () => {
-    const { requestKey, page } = this.state;
+  toggleModal = () => {
+    this.setState(({ openModal }) => ({ openModal: !openModal }));
+  };
 
-    pixabayApi
-      .fetchImages(requestKey, page)
-      .then(response =>
-        this.setState(prevState => ({
-          images: [...prevState.images, ...response.hits],
-          page: prevState.page + 1,
-        })),
-      )
-      .catch(error => this.setState({ error, status: Status.REJECTED }))
-      .finally(() => this.setState({ status: Status.RESOLVED }));
+  toggleLoading = () => {
+    this.setState(({ isLoading }) => ({ isLoading: !isLoading }));
+  };
+
+  hadleChangeQuery = query => {
+    this.setState({
+      searchQuery: query,
+      page: 1,
+      visibleImages: [],
+    });
+  };
+
+  handleNextPage = () => {
+    this.setState(({ page }) => {
+      return {
+        page: page + 1,
+      };
+    });
+  };
+
+  handleScroll = () => {
+    window.scrollTo({
+      top: document.documentElement.scrollHeight,
+      behavior: 'smooth',
+    });
+  };
+
+  modalContentSet = itemId => {
+    const { visibleImages } = this.state;
+    const element = visibleImages.find(({ id }) => id === itemId);
+    this.setState({ modalContent: element.largeImageURL });
+  };
+
+  getData = () => {
+    const { searchQuery, page } = this.state;
+    this.toggleLoading();
+    fetchImages(searchQuery, page)
+      .then(({ hits }) => {
+        this.setState(({ visibleImages }) => {
+          return { visibleImages: [...visibleImages, ...hits] };
+        });
+      })
+      .then(this.handleScroll)
+      .catch(error => console.log(error.message))
+      .finally(this.toggleLoading);
   };
 
   render() {
-    const { status, error } = this.state;
-
+    const { visibleImages, openModal, modalContent, isLoading, page } =
+      this.state;
+    const isNotLastPage = visibleImages.length / page === 12;
+    const btnEnable = visibleImages.length > 0 && !isLoading && isNotLastPage;
     return (
-      <>
-        <Searchbar onSubmit={this.handleFormSubmit}></Searchbar>
-        <ToastContainer autoClose={3000} />
+      <div className="App">
+        <SearchBar onSubmit={this.hadleChangeQuery} />
 
-        {status === Status.IDLE && (
-          <p className="welcomeText">Please enter your search term</p>
+        <ImageGallery
+          images={visibleImages}
+          onClick={this.toggleModal}
+          onItemClick={this.modalContentSet}
+        />
+
+        {openModal && (
+          <Modal content={modalContent} onBackdrop={this.toggleModal} />
         )}
+        {isLoading && <Spinner />}
 
-        {status === Status.PENDING && <ImagePendingView />}
-
-        {status === Status.REJECTED && (
-          <ImagesErrorView message={error.message} />
-        )}
-
-        {status === Status.RESOLVED && (
-          <>
-            <ImageGallery images={this.state.images} />
-            <Button onClick={this.renderImages} />
-          </>
-        )}
-      </>
+        {btnEnable && <Button name="Load more" onPress={this.handleNextPage} />}
+      </div>
     );
   }
 }

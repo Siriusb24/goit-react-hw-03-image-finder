@@ -1,39 +1,27 @@
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
-import Modal from '../Modal';
+
+import s from './ImageGalleryItem.module.css';
 
 class ImageGalleryItem extends Component {
-  state = {
-    showModal: false,
-  };
-
   static propTypes = {
-    src: PropTypes.string.isRequired,
-    alt: PropTypes.string.isRequired,
-    largeImageUrl: PropTypes.string.isRequired,
+    onItemClick: PropTypes.func.isRequired,
+    id: PropTypes.number.isRequired,
+    webformatURL: PropTypes.string.isRequired,
   };
 
-  toggleModal = () => {
-    this.setState(({ showModal }) => ({
-      showModal: !showModal,
-    }));
+  modalContent = id => {
+    this.props.onItemClick(id);
   };
-
   render() {
-    const { src, alt, largeImageUrl } = this.props;
-    const { showModal } = this.state;
+    const { id, webformatURL } = this.props;
     return (
-      <li className="ImageGalleryItem">
-        <img
-          onClick={this.toggleModal}
-          src={src}
-          alt={alt}
-          className="ImageGalleryItemImage"
-        />
-        {showModal && (
-          <Modal onClose={this.toggleModal} src={largeImageUrl} alt={alt} />
-        )}
-      </li>
+      <img
+        src={webformatURL}
+        alt=""
+        className={s.ImageGalleryItem_image}
+        onClick={() => this.modalContent(id)}
+      />
     );
   }
 }
