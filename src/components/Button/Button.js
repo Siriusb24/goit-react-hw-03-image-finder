@@ -1,24 +1,20 @@
-import React, { Component } from 'react';
+import React from 'react';
 import PropTypes from 'prop-types';
-
 import s from './Button.module.css';
 
-class Button extends Component {
-  static defaultProps = {
-    name: 'Load more',
-  };
-  static propTypes = {
-    name: PropTypes.string,
-    onPress: PropTypes.func.isRequired,
-  };
-  render() {
-    const { onPress, name } = this.props;
+const Button = ({ onPress, name }) => {
+  
     return (
       <button type="button" onClick={onPress} className={s.Button}>
-        {name}
+          {name}
       </button>
     );
-  }
-}
+};
+
+
+Button.propTypes = {
+  name: PropTypes.string,
+  onPress: PropTypes.func.isRequired,
+};
 
 export default Button;

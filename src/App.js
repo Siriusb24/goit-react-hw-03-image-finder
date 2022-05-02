@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 
-import SearchBar from './components/SearchBar/SearchBar';
+import SearchBar from './components/Searchbar/Searchbar';
 import ImageGallery from './components/ImageGallery/ImageGallery';
 import Modal from './components/Modal/Modal';
 import Button from './components/Button/Button';
@@ -16,6 +16,8 @@ class App extends Component {
     visibleImages: [],
     isLoading: false,
     openModal: false,
+    error: null,
+    id:''
   };
 
   componentDidUpdate(prevProps, { searchQuery, page }) {
@@ -65,22 +67,24 @@ class App extends Component {
     this.setState({ modalContent: element.largeImageURL });
   };
 
-  getData = () => {
+  getData = async () => {
     const { searchQuery, page } = this.state;
     this.toggleLoading();
-    fetchImages(searchQuery, page)
-      .then(({ hits }) => {
+    try {
+      const {hits} = await fetchImages(searchQuery, page);
         this.setState(({ visibleImages }) => {
+          console.log(hits)
           return { visibleImages: [...visibleImages, ...hits] };
         });
-      })
-      .then(this.handleScroll)
-      .catch(error => console.log(error.message))
-      .finally(this.toggleLoading);
+        this.handleScroll()
+      }catch (error){ 
+        console.log('Smth wrong with App fetch', error);
+      } finally{
+        this.toggleLoading()}
   };
 
   render() {
-    const { visibleImages, openModal, modalContent, isLoading, page } =
+    const { visibleImages, openModal, modalContent, isLoading, page, id} =
       this.state;
     const isNotLastPage = visibleImages.length / page === 12;
     const btnEnable = visibleImages.length > 0 && !isLoading && isNotLastPage;
@@ -89,16 +93,17 @@ class App extends Component {
         <SearchBar onSubmit={this.hadleChangeQuery} />
 
         <ImageGallery
+          key={id}
           images={visibleImages}
           onClick={this.toggleModal}
           onItemClick={this.modalContentSet}
+          name={`Load more`}
         />
 
         {openModal && (
           <Modal content={modalContent} onBackdrop={this.toggleModal} />
         )}
         {isLoading && <Spinner />}
-
         {btnEnable && <Button name="Load more" onPress={this.handleNextPage} />}
       </div>
     );
